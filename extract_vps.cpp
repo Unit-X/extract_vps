@@ -10,9 +10,7 @@
 #include <memory>
 #include <vector>
 #include <algorithm>
-#include <thread>
 #include <cstring>
-
 #include "mfxvideo++.h"
 
 std::unique_ptr<MFXVideoDECODE> gQSVDecoder;
@@ -94,6 +92,7 @@ int main() {
     lBitStream.DataLength = lHevcData.size();
     lBitStream.MaxLength = lBitStream.DataLength;
 
+    //prepare buffers
     std::vector<uint8_t> lDecodedSpsData(128);
     std::vector<uint8_t> lDecodedPpsData(128);
     std::vector<uint8_t> lDecodedVpsData(128);
@@ -119,17 +118,20 @@ int main() {
     lSpsPpsOption.PPSBufSize = lDecodedPpsData.size();
     lpExtendedBuffers[1] = (mfxExtBuffer *) &lSpsPpsOption;
 
+    //Configure the bitstream informateion struct
     lSpeculativeVideoParams.ExtParam = lpExtendedBuffers;
     lSpeculativeVideoParams.NumExtParam = 2;
     lSpeculativeVideoParams.mfx.CodecId = MFX_CODEC_HEVC;
     lSpeculativeVideoParams.IOPattern = MFX_IOPATTERN_OUT_SYSTEM_MEMORY;
 
+    //Get bitstream information
     sts = gQSVDecoder->DecodeHeader(&lBitStream, &lSpeculativeVideoParams);
     if (sts != MFX_ERR_NONE) {
         std::cout <<  "DecodeHeader error." << std::endl;
         return EXIT_FAILURE;
     }
 
+    //Print our findings
     for (int i=0;i<lSpeculativeVideoParams.NumExtParam;i++) {
         mfxExtBuffer *lExtBuf = lSpeculativeVideoParams.ExtParam[i];
         if (lExtBuf->BufferId == MFX_EXTBUFF_CODING_OPTION_SPSPPS) {
@@ -159,6 +161,7 @@ int main() {
         }
     }
 
+    //Close all
     gQSVDecoder->Close();
     lSession.Close();
     close(lFd);
